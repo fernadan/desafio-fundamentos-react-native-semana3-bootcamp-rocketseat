@@ -30,23 +30,84 @@ const CartProvider: React.FC = ({ children }) => {
 
   useEffect(() => {
     async function loadProducts(): Promise<void> {
-      // TODO LOAD ITEMS FROM ASYNC STORAGE
+      const productsFromAsyncStorage = await AsyncStorage.getItem(
+        '@DesafioReactNative:products',
+      );
+
+      if (productsFromAsyncStorage) {
+        setProducts(JSON.parse(productsFromAsyncStorage));
+      }
     }
 
     loadProducts();
   }, []);
 
-  const addToCart = useCallback(async product => {
-    // TODO ADD A NEW ITEM TO THE CART
-  }, []);
+  useEffect(() => {
+    async function saveProducts(): Promise<void> {
+      await AsyncStorage.setItem(
+        '@DesafioReactNative:products',
+        JSON.stringify(products),
+      );
+    }
 
-  const increment = useCallback(async id => {
-    // TODO INCREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+    saveProducts();
+  }, [products]);
 
-  const decrement = useCallback(async id => {
-    // TODO DECREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+  const increment = useCallback(
+    async id => {
+      const idx = products.findIndex(product => product.id === id);
+      const productSeleted = products[idx];
+      productSeleted.quantity += 1;
+      products[idx] = productSeleted;
+
+      const productsList = products.filter(product => product.id !== id);
+      setProducts([...productsList, productSeleted]);
+    },
+    [products],
+  );
+
+  const decrement = useCallback(
+    async id => {
+      const productsList = products.filter(product => product.id !== id);
+      const idx = products.findIndex(product => product.id === id);
+      const productSeleted = products[idx];
+
+      if (productSeleted.quantity > 1) {
+        productSeleted.quantity -= 1;
+        products[idx] = productSeleted;
+
+        setProducts([...productsList, productSeleted]);
+      } else {
+        setProducts([...productsList]);
+      }
+    },
+    [products],
+  );
+
+  const addToCart = useCallback(
+    async ({ id, title, image_url, price, quantity = 1 }) => {
+      const productsSearched = products.filter(product => product.id === id);
+
+      let quantitySanatized = quantity;
+      if (quantitySanatized === 0) {
+        quantitySanatized = 1;
+      }
+
+      if (productsSearched.length > 0) {
+        await increment(productsSearched[0].id);
+      } else {
+        const product: Product = {
+          id,
+          title,
+          image_url,
+          price,
+          quantity: quantitySanatized,
+        };
+        setProducts([...products, product]);
+      }
+    },
+    [products],
+  );
 
   const value = React.useMemo(
     () => ({ addToCart, increment, decrement, products }),
